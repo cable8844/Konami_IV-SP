@@ -1,0 +1,4 @@
+# Distribution / packaging
+build/
+.vscode/
+_CPack_Packages
