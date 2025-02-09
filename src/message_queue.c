@@ -24,8 +24,9 @@ int enqueue(MessageQueue* queue, Message message) {
 int dequeue(MessageQueue* queue, Message* message) {
     pthread_mutex_lock(&queue->lock);
     if (queue->size == 0) {
+        /* Empty queue */
         pthread_mutex_unlock(&queue->lock);
-        return 0; // Queue Empty
+        return 0;
     }
     *message = queue->messages[queue->front];
     queue->front = (queue->front + 1) % MAX_QUEUE_SIZE;

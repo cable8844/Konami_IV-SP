@@ -68,6 +68,7 @@ static struct argp argp = {options, parse_opt, args_doc, doc};
 int main(int argc, char** argv) {
     /* Parse our arguments */
     struct arguments arguments;
+    /* Set defaults */
     arguments.address = "127.0.0.1";
     arguments.port = 5000;
     arguments.schema = NULL;
@@ -85,8 +86,6 @@ int main(int argc, char** argv) {
     }
 
     accept_connection(server_fd, valid_ctxt);
-
-
 
     return 0;
 }

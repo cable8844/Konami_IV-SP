@@ -64,7 +64,8 @@ int receive(int client_fd, char** buffer, size_t* buffer_size) {
         }
     }
 
-    (*buffer)[total_bytes_recvd] = '\0'; // Make sure the buffer is null terminated
+    /* Make sure the buffer is null terminated */
+    (*buffer)[total_bytes_recvd] = '\0';
 
     return total_bytes_recvd;
 }
@@ -116,15 +117,23 @@ static void parse_xml(xmlNodePtr root_element, Message* message) {
         name[0] = tolower(name[0]);
         if (strcmp(name, "command") == 0) {
             message->command = (char*)xmlNodeGetContent(node);
-            printf("Command: %s\n", message->command);
-
+            #ifdef DEBUG
+            printf("DEBUG: Command: %s\n", message->command);
+            #endif
         } else if (strcmp(name, "description") == 0) {
             message->description = (char*)xmlNodeGetContent(node);
-            printf("Description: %s\n", message->description);
+            #ifdef DEBUG
+            printf("DEBUG: Description: %s\n", message->description);
+            #endif
         } else if (strcmp(name, "value") == 0) {
             message->value = (char*)xmlNodeGetContent(node);
-            printf("Value: %s\n", message->value);
+            #ifdef DEBUG
+            printf("DEBUG: Value: %s\n", message->value);
+            #endif
         } else if (strcmp(name, "data") == 0 || strcmp(name, "row") == 0) {
+            #ifdef DEBUG
+            printf("DEBUG: Recursing down to lower layer of %s\n", name);
+            #endif
             parse_xml(node, message);
         }
         #ifdef DEBUG
@@ -145,7 +154,7 @@ static void parse_xml(xmlNodePtr root_element, Message* message) {
 int get_xml(const char* xml_data, size_t xml_length, xmlSchemaValidCtxtPtr valid_ctxt, Message* message) {
     assert(xml_data[xml_length] == '\0');
 
-    // Parse the XML from memory. Use "noname.xml" in this case to represent the file name
+    /* Parse the XML from memory. Use "noname.xml" in this case to represent the file name */
     xmlDocPtr doc = xmlReadMemory(xml_data, xml_length, "noname.xml", NULL, 0);
     if (doc == NULL) {
         fprintf(stderr, "Failed to parse document\n");
@@ -188,7 +197,8 @@ int accept_connection(int server_fd, xmlSchemaValidCtxtPtr valid_ctxt) {
             continue;
         }
 
-        time_t receive_date = time(0); // System time
+        /* System time */
+        time_t receive_date = time(0);
         ssize_t bytes_recvd;
         if ((bytes_recvd = receive(new_socket, &buffer, &buffer_size)) < 0) {
             close(new_socket);

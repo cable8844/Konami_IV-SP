@@ -39,5 +39,4 @@ int enqueue(MessageQueue* queue, Message message);
  */
 int dequeue(MessageQueue* queue, Message* message);
 
-
 #endif // MESSAGE_QUEUE_H

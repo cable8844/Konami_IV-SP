@@ -56,7 +56,8 @@ int accept_connection(int server_fd, xmlSchemaValidCtxtPtr valid_ctxt);
 
 
 /**
- * Default schema saved into memory, so that a default schema does not need to be bundled into the install
+ * Default schema saved into memory, so that a default schema does not need to be bundled into the install.
+ * Set based on example from the prompt
  */
 #ifndef DEFAULT_SCHEMA
 #define DEFAULT_SCHEMA                                                                                         \
