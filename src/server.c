@@ -208,6 +208,7 @@ int accept_connection(int server_fd, xmlSchemaValidCtxtPtr valid_ctxt) {
         Message message = {0};
         message.receive_date = receive_date;
         get_xml(buffer, bytes_recvd, valid_ctxt, &message);
+
         usleep(5);
     }
 

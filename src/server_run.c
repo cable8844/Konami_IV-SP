@@ -6,6 +6,14 @@
 #include <argp.h>
 #include <errno.h>
 
+/* Note: For some reason VSCode doesn't like conio and signal handler, so I'm leaving it out for now. */
+#if 0
+#include <conio.h> // Detect if 'q' was pressed to exit
+#include <signal.h>
+
+int signal_caught;
+#endif
+
 #include "server.h"
 
 const char* argp_program_version = "Konami Simple Server 0.0.1";
@@ -65,7 +73,70 @@ static error_t parse_opt(int key, char *arg, struct argp_state* state) {
 /* Our argp parser. */
 static struct argp argp = {options, parse_opt, args_doc, doc};
 
+/* Note: For some reason, VSCode does not like signals and conio.h, so I'm removing it for now. */
+#if 0
+/**
+ * @brief Detect if q was hit
+ * @return true if q was hit, false otherwise
+ */
+static bool was_q_pressed() {
+    struct timeval tv;
+    fd_set fds;
+    tv.tv_sec = 0;
+    tv.tv_usec = 0;
+    FD_ZERO(&fds);
+    FD_SET(STDIN_FILENO, &fds);
+    select(STDIN_FILENO + 1, &fds, NULL, NULL, &tv);
+    if (FD_ISSET(STDIN_FILENO, &fds)) {
+        char c = fgetc(stdin);
+        if (c == 'q') {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * @brief Signal handler function
+ * @param signum Signal number
+ */
+static void signal_handler(int signum)
+{
+    switch(signum) {
+        case SIGHUP:
+        case SIGINT:
+        case SIGQUIT:
+        case SIGABRT:
+        case SIGTERM:
+            signal_caught = 1;
+            break;
+    }
+}
+
+/**
+ * @brief Signal handler initialization.
+ */
+static void set_signal_handler()
+{
+    signal_caught = 0;
+    struct sigaction action;
+    action.sa_handler = signal_handler;
+    sigemptyset(&action.sa_mask);
+    action.sa_flags = 0;
+    sigaction(SIGHUP, &action, NULL);
+    sigaction(SIGINT, &action, NULL);
+    sigaction(SIGQUIT, &action, NULL);
+    sigaction(SIGABRT, &action, NULL);
+    sigaction(SIGTERM, &action, NULL);
+}
+#endif
+
 int main(int argc, char** argv) {
+    /* Note: For some reason, VSCode does not like signals and conio.h, so I'm removing it for now. */
+    #if 0
+    set_signal_handler();
+    #endif
     /* Parse our arguments */
     struct arguments arguments;
     /* Set defaults */
@@ -86,6 +157,16 @@ int main(int argc, char** argv) {
     }
 
     accept_connection(server_fd, valid_ctxt);
+
+    while (1) {
+        /* Note: For some reason, VSCode does not like signals and conio.h, so I'm removing it for now. */
+        #if 0
+        if (was_q_pressed() || signal_caught) {
+            break;
+        }
+        #endif
+        usleep(100);
+    }
 
     return 0;
 }
