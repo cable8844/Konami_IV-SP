@@ -12,7 +12,7 @@ const char* argp_program_version = "Konami Simple Server 0.0.1";
 const char* argp_program_bug_address = "<calebfarrand@gmail.com>";
 
 /* Program documentation. */
-static char doc[] = "A simple server program that forwards XML data";
+static char doc[] = "A simple server program that listens for XML messages, adds them to a queue and processes them.";
 
 /* A description of the arguments we accept. */
 static char args_doc[] = "";
@@ -77,6 +77,14 @@ int main(int argc, char** argv) {
     if ((server_fd = open_connection(arguments.address, arguments.port)) < 0) {
         exit(server_fd);
     }
+
+    xmlSchemaPtr schema = NULL;
+    xmlSchemaValidCtxtPtr valid_ctxt = NULL;
+    if (load_schema(arguments.schema, &schema, &valid_ctxt) < 0) {
+        exit(EXIT_FAILURE);
+    }
+
+    accept_connection(server_fd, valid_ctxt);
 
 
 

@@ -6,14 +6,8 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <errno.h>
-
-// Validate XML
-#include <libxml/parser.h>
-#include <libxml/tree.h>
-#include <libxml/xmlschemas.h>
-
-xmlSchemaPtr schema = NULL;
-xmlSchemaValidCtxtPtr valid_ctxt = NULL;
+#include <assert.h>
+#include <ctype.h> // tolower
 
 int open_connection(const char* address_str, int port) {
     int server_fd;
@@ -40,7 +34,7 @@ int open_connection(const char* address_str, int port) {
         return EXIT_FAILURE;
     }
 
-    printf("Listening on %s:%d\n", address, port);
+    printf("Listening on %s:%d\n", address_str, port);
 
     return server_fd;
 }
@@ -63,45 +57,83 @@ int receive(int client_fd, char** buffer, size_t* buffer_size) {
         if (bytes_recvd == *buffer_size) {
             *buffer_size *= 2;
             *buffer = realloc(*buffer, *buffer_size);
-            if (*buffer == NULL) {
+            if ((*buffer) == NULL) {
                 perror("realloc");
                 return EXIT_FAILURE;
             }
         }
     }
 
-    *buffer[total_bytes_recvd] = '\0'; // Make sure the buffer is null terminated
+    (*buffer)[total_bytes_recvd] = '\0'; // Make sure the buffer is null terminated
 
     return total_bytes_recvd;
 }
 
-int load_schema(const char* schema_file) {
+int load_schema(const char* schema_file, xmlSchemaPtr* schema, xmlSchemaValidCtxtPtr* valid_ctxt) {
     xmlSchemaParserCtxtPtr parser_ctxt;
     if (schema_file != NULL) {
         parser_ctxt = xmlSchemaNewParserCtxt(schema_file);
     } else {
-        parser_ctxt = xmlSchemaNewMemParserCtxt(default_schema, strlen(default_schema));
+        parser_ctxt = xmlSchemaNewMemParserCtxt(DEFAULT_SCHEMA, strlen(DEFAULT_SCHEMA));
     }
-    
+
     if (!parser_ctxt) {
         fprintf(stderr, "Could not create schema parser context\n");
         return EXIT_FAILURE;
     }
 
-    schema = xmlSchemaParse(parser_ctxt);
+    *schema = xmlSchemaParse(parser_ctxt);
     xmlSchemaFreeParserCtxt(parser_ctxt);
 
-    if (!schema) {
+    if (!(*schema)) {
         fprintf(stderr, "Failed to load XML Schema\n");
         return EXIT_FAILURE;
     }
 
-    valid_ctxt = xmlSchemaNewValidCtxt(schema);
-    if (!valid_ctxt) {
+    *valid_ctxt = xmlSchemaNewValidCtxt(*schema);
+    if (!(*valid_ctxt)) {
         fprintf(stderr, "Failed to create schema validation context\n");
-        xmlSchemaFree(schema);
+        xmlSchemaFree(*schema);
         return EXIT_FAILURE;
     }
+}
+
+/**
+ * Parse the XML data buffer and populate the Message struct
+ * @param root_element The root element of the XML document
+ * @param message The message to populate
+ */
+static void parse_xml(xmlNodePtr root_element, Message* message) {
+    assert(root_element != NULL);
+    char* data = NULL;
+
+    for (xmlNodePtr node = root_element->children; node != NULL; node = node->next) {
+        if (node->type != XML_ELEMENT_NODE) {
+            continue;
+        }
+
+        char* name = (char*)node->name;
+        name[0] = tolower(name[0]);
+        if (strcmp(name, "command") == 0) {
+            message->command = (char*)xmlNodeGetContent(node);
+            printf("Command: %s\n", message->command);
+
+        } else if (strcmp(name, "description") == 0) {
+            message->description = (char*)xmlNodeGetContent(node);
+            printf("Description: %s\n", message->description);
+        } else if (strcmp(name, "value") == 0) {
+            message->value = (char*)xmlNodeGetContent(node);
+            printf("Value: %s\n", message->value);
+        } else if (strcmp(name, "data") == 0 || strcmp(name, "row") == 0) {
+            parse_xml(node, message);
+        }
+        #ifdef DEBUG
+        else {
+            fprintf(stderr, "DEBUG: Unknown element: %s\n", node->name);
+        }
+        #endif
+    }
+
 }
 
 /**
@@ -110,7 +142,7 @@ int load_schema(const char* schema_file) {
  * @param buffer_size The length of the XML data
  * @return 1 if the XML is valid, 0 if invalid, EXIT_FAILURE if error occurred
  */
-int validate_xml(const char* xml_data, size_t xml_length) {
+int get_xml(const char* xml_data, size_t xml_length, xmlSchemaValidCtxtPtr valid_ctxt, Message* message) {
     assert(xml_data[xml_length] == '\0');
 
     // Parse the XML from memory. Use "noname.xml" in this case to represent the file name
@@ -121,17 +153,23 @@ int validate_xml(const char* xml_data, size_t xml_length) {
     }
 
     int valid = xmlSchemaValidateDoc(valid_ctxt, doc);
-    if (valid == 0) {
-        printf("%s", xml_data);
-    } else {
-        printf("XML validation failed.\n");
+    if (valid != 0) {
+        xmlFreeDoc(doc);
+        return valid == 0;
     }
 
+    xmlNodePtr root_element = xmlDocGetRootElement(doc);
+    if (root_element == NULL) {
+        fprintf(stderr, "Empty XML document\n");
+        return EXIT_FAILURE;
+    }
+
+    parse_xml(root_element, message);
     xmlFreeDoc(doc);
     return valid == 0;
 }
 
-int get_xml(int server_fd) {
+int accept_connection(int server_fd, xmlSchemaValidCtxtPtr valid_ctxt) {
     int new_socket;
     struct sockaddr_in address;
     int addr_len = sizeof(address);
@@ -150,13 +188,17 @@ int get_xml(int server_fd) {
             continue;
         }
 
+        time_t receive_date = time(0); // System time
         ssize_t bytes_recvd;
         if ((bytes_recvd = receive(new_socket, &buffer, &buffer_size)) < 0) {
             close(new_socket);
             return EXIT_FAILURE;
         }
 
-        validate_xml(buffer, bytes_recvd);
+        Message message = {0};
+        message.receive_date = receive_date;
+        get_xml(buffer, bytes_recvd, valid_ctxt, &message);
+        usleep(5);
     }
 
     return new_socket;

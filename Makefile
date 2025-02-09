@@ -1,4 +1,4 @@
-all: default
+all: Debug
 
 default:
 	cmake -S . -B build

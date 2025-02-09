@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.10)
 project(Konami_iv_sp)
 
 # Specify the source file
-set(SOURCE_FILES src/server.c src/server_run.c)
+file(GLOB SOURCE_FILES src/*.c)
 set(SOURCE_INCLUDE_DIRS src)
 
 # Add an executable

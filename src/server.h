@@ -3,6 +3,13 @@
 
 #include <stddef.h>
 
+// Validate XML
+#include <libxml/parser.h>
+#include <libxml/tree.h>
+#include <libxml/xmlschemas.h>
+
+#include "message_queue.h"
+
 /**
  * Bind and listen on the given address and port
  * @param address_str The address to bind to
@@ -21,40 +28,63 @@ int open_connection(const char* address_str, int port);
 int receive(int client_fd, char** buffer, size_t* buffer_size);
 
 /**
+ * Load the XML schema from the given file
+ * @param schema_file The path to the XML schema file
+ * @param schema The pointer to the schema
+ * @param valid_ctxt The pointer to the validation context
+ * @return EXIT_FAILURE if an error occurred
+ */
+int load_schema(const char* schema_file, xmlSchemaPtr* schema, xmlSchemaValidCtxtPtr* valid_ctxt);
+
+/**
  * Validate the XML data in the buffer
  * @param buffer The buffer containing the XML data
  * @param buffer_size The size of the buffer
+ * @param valid_ctxt The validation context, created from load_schema
+ * @param message The message to populate
  * @return 1 if the XML is valid, 0 if invalid, EXIT_FAILURE if error occurred
  */
-int validate_xml(const char* buffer, size_t buffer_size);
+int get_xml(const char* buffer, size_t buffer_size, xmlSchemaValidCtxtPtr valid_ctxt, Message* message);
 
-int get_xml(int server_fd);
+/**
+ * Get the XML data from the client and validate it
+ * @param server_fd The fd of the server socket
+ * @param valid_ctxt The validation context
+ * @return EXIT_FAILURE if an error occurred
+ */
+int accept_connection(int server_fd, xmlSchemaValidCtxtPtr valid_ctxt);
 
-const char* default_schema = 
-    "<?xml version=\"1.0\"?>"
-    "<xs:schema xmlns:xs=\"http://www.w3.org/2001/XMLSchema\" elementFormDefault=\"qualified\">"
-    "    <xs:element name=\"Message\">"
-    "        <xs:complexType>"
-    "            <xs:sequence>"
-    "                <xs:element name=\"Command\" type=\"xs:string\"/>"
-    "                <xs:element name=\"Data\">"
-    "                    <xs:complexType>"
-    "                        <xs:sequence>"
-    "                            <xs:element name=\"Row\" maxOccurs=\"unbounded\">"
-    "                                <xs:complexType>"
-    "                                    <xs:sequence>"
-    "                                        <xs:element name=\"Description\" type=\"xs:string\"/>"
-    "                                        <xs:element name=\"Value\" type=\"xs:string\"/>"
-    "                                    </xs:sequence>"
-    "                                </xs:complexType>"
-    "                            </xs:element>"
-    "                        </xs:sequence>"
-    "                    </xs:complexType>"
-    "                </xs:element>"
-    "            </xs:sequence>"
-    "        </xs:complexType>"
-    "    </xs:element>"
-    "</xs:schema>";
+
+/**
+ * Default schema saved into memory, so that a default schema does not need to be bundled into the install
+ */
+#ifndef DEFAULT_SCHEMA
+#define DEFAULT_SCHEMA                                                                                         \
+    "<?xml version=\"1.0\"?>"                                                                                  \
+    "<xs:schema xmlns:xs=\"http://www.w3.org/2001/XMLSchema\" elementFormDefault=\"qualified\">"               \
+    "    <xs:element name=\"Message\">"                                                                        \
+    "        <xs:complexType>"                                                                                 \
+    "            <xs:sequence>"                                                                                \
+    "                <xs:element name=\"Command\" type=\"xs:string\"/>"                                        \
+    "                <xs:element name=\"Data\">"                                                               \
+    "                    <xs:complexType>"                                                                     \
+    "                        <xs:sequence>"                                                                    \
+    "                            <xs:element name=\"Row\" maxOccurs=\"unbounded\">"                            \
+    "                                <xs:complexType>"                                                         \
+    "                                    <xs:sequence>"                                                        \
+    "                                        <xs:element name=\"Description\" type=\"xs:string\"/>"            \
+    "                                        <xs:element name=\"Value\" type=\"xs:string\"/>"                  \
+    "                                    </xs:sequence>"                                                       \
+    "                                </xs:complexType>"                                                        \
+    "                            </xs:element>"                                                                \
+    "                        </xs:sequence>"                                                                   \
+    "                    </xs:complexType>"                                                                    \
+    "                </xs:element>"                                                                            \
+    "            </xs:sequence>"                                                                               \
+    "        </xs:complexType>"                                                                                \
+    "    </xs:element>"                                                                                        \
+    "</xs:schema>"
+#endif // DEFAULT_SCHEMA
 
 #endif // SERVER_H
 
