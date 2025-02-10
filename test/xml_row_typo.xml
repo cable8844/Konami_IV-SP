@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Message>
+    <Command>echo</Command>
+    <Data>
+        <sRow>
+            <Description>Name</Description>
+            <Value>Hello, world</Value>
+        </Row>
+    </Data>
+</Message>

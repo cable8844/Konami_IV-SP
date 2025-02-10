@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Message>
+    <Command>ls</Command>
+    <Data>
+        <Row>
+            <Description>Name</Description>
+            <Value>/etc/</Value>
+        </Row>
+    </Data>
+</Message>
