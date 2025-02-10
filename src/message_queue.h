@@ -42,6 +42,15 @@ int enqueue(MessageQueue* queue, Message message);
 int dequeue(MessageQueue* queue, Message* message);
 
 /**
+ * @brief Process a message and send the response back to the client
+ * @param message The message to process
+ * @param response The response to send back to the client
+ * @param response_size The size of the response buffer
+ * @return 0 on success, 1 on failure
+ */
+int process_message(const Message* message, char* response, int response_size);
+
+/**
  * @brief Continuously process messages in the queue
  * @param queue The message queue
  * @return Does not return

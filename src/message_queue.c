@@ -103,7 +103,7 @@ static int run_command(const Message* message, char* response, size_t response_s
  * @param response_size The size of the response buffer
  * @return 0 on success, 1 on failure
  */
-static int process_message(const Message* message, char* response, int response_size) {
+int process_message(const Message* message, char* response, int response_size) {
     if (strcmp(message->value, "Unknown Command\n") == 0) {
         send(message->client_fd, message->value, strlen(message->value), 0);
         printf("Unknown Command\n");

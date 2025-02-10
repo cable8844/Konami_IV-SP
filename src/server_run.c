@@ -140,8 +140,9 @@ typedef struct {
 } AcceptConnectionParams;
 
 /**
- * @brief Accept a connection from a client
- * @param server_fd The server file descriptor
+ * @brief Wrapper function for pthread_create for accept_connection. Get the AcceptConnectionParams from
+ * the void* params to call accept_connection
+ * @param params AcceptConnectionParams struct containing the server_fd, valid_ctxt, and queue
  */
 static void pthread_accept_connection_wrapper(void* params) {
     AcceptConnectionParams* accept_params = (AcceptConnectionParams*)params;
@@ -174,20 +175,16 @@ int main(int argc, char** argv) {
     }
 
 
-    MessageQueue* queue = (MessageQueue*)calloc(1, sizeof(MessageQueue));
-    if (queue == NULL) {
+    MessageQueue queue = {0};
+    queue.messages = (Message*)calloc(1, MAX_QUEUE_SIZE * sizeof(Message));
+    if (queue.messages == NULL) {
         perror("calloc");
         ret = EXIT_FAILURE;
         goto exit;
     }
-    queue->messages = (Message*)calloc(1, MAX_QUEUE_SIZE * sizeof(Message));
-    if (queue->messages == NULL) {
-        perror("calloc");
-        ret = EXIT_FAILURE;
-        goto exit;
-    }
+    pthread_mutex_init(&queue.lock, NULL);
 
-    AcceptConnectionParams accept_params = {server_fd, valid_ctxt, queue};
+    AcceptConnectionParams accept_params = {server_fd, valid_ctxt, &queue};
     pthread_t accept_thread;
     if (pthread_create(&accept_thread, NULL, (void* (*)(void*))pthread_accept_connection_wrapper, (void*)&accept_params) != 0) {
         perror("pthread_create");
@@ -196,7 +193,7 @@ int main(int argc, char** argv) {
     }
     
     pthread_t process_thread;
-    if (pthread_create(&process_thread, NULL, (void* (*)(void*))process_queue, (void*)queue) != 0) {
+    if (pthread_create(&process_thread, NULL, (void* (*)(void*))process_queue, (void*)(&queue)) != 0) {
         perror("pthread_create");
         ret = EXIT_FAILURE;
         goto exit;
@@ -217,12 +214,10 @@ exit:
     if (schema) {
         xmlSchemaFree(schema);
     }
-    if (queue) {
-        if (queue->messages) {
-            free(queue->messages);
-        }
-        free(queue);
+    if (queue.messages) {
+        free(queue.messages);
     }
+    pthread_mutex_destroy(&queue.lock);
 
     close(server_fd);
     return ret;

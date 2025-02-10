@@ -146,9 +146,11 @@ static void parse_xml(xmlNodePtr root_element, Message* message) {
 }
 
 /**
- * Validate the XML data buffer. Buffer must be null terminated.
- * @param xml_data The char* XML data
- * @param buffer_size The length of the XML data
+ * Validate the XML data in the buffer
+ * @param buffer The buffer containing the XML data
+ * @param buffer_size The size of the buffer
+ * @param valid_ctxt The validation context, created from load_schema
+ * @param message The message to populate
  * @return 1 if the XML is valid, 0 if invalid, EXIT_FAILURE if error occurred
  */
 int get_xml(const char* xml_data, size_t xml_length, xmlSchemaValidCtxtPtr valid_ctxt, Message* message) {
