@@ -20,4 +20,5 @@ RUN make clean
 RUN make DEB && make RPM
 
 # When the container starts, copy the packages to the /release directory
-ENTRYPOINT [ "/bin/bash -c ", "[ -d /release/ ]", "||", "mkdir", "-p", "/release/", "&&", "cp", "/workspace/*.rpm", "/workspace/*.deb", "/release/" ]
+# Not done. For now, manually copy the packages from the container to the host
+# ENTRYPOINT [ "/bin/bash -c ", "[ -d /release/ ]", "||", "mkdir", "-p", "/release/", "&&", "cp", "/workspace/*.rpm", "/workspace/*.deb", "/release/" ]
