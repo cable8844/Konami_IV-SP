@@ -157,6 +157,7 @@ int get_xml(const char* xml_data, size_t xml_length, xmlSchemaValidCtxtPtr valid
     /* Parse the XML from memory. Use "noname.xml" in this case to represent the file name */
     xmlDocPtr doc = xmlReadMemory(xml_data, xml_length, "noname.xml", NULL, 0);
     if (doc == NULL) {
+        message->value = "Unknown Command\n";
         fprintf(stderr, "Failed to parse document\n");
         return EXIT_FAILURE;
     }
@@ -169,6 +170,7 @@ int get_xml(const char* xml_data, size_t xml_length, xmlSchemaValidCtxtPtr valid
 
     xmlNodePtr root_element = xmlDocGetRootElement(doc);
     if (root_element == NULL) {
+        message->value = "Unknown Command\n";
         fprintf(stderr, "Empty XML document\n");
         return EXIT_FAILURE;
     }
@@ -178,7 +180,7 @@ int get_xml(const char* xml_data, size_t xml_length, xmlSchemaValidCtxtPtr valid
     return valid == 0;
 }
 
-int accept_connection(int server_fd, xmlSchemaValidCtxtPtr valid_ctxt) {
+int accept_connection(int server_fd, xmlSchemaValidCtxtPtr valid_ctxt, MessageQueue* queue) {
     int new_socket;
     struct sockaddr_in address;
     int addr_len = sizeof(address);
@@ -197,17 +199,35 @@ int accept_connection(int server_fd, xmlSchemaValidCtxtPtr valid_ctxt) {
             continue;
         }
 
-        /* System time */
-        time_t receive_date = time(0);
+        /* Received the data into the buffer */
         ssize_t bytes_recvd;
         if ((bytes_recvd = receive(new_socket, &buffer, &buffer_size)) < 0) {
             close(new_socket);
             return EXIT_FAILURE;
         }
 
+        /* Get the relevant data out of the xml buffer we have received */
         Message message = {0};
-        message.receive_date = receive_date;
+        message.client_fd = new_socket;
+        /* Set the receive time of the message */
+        if (gettimeofday(&message.receive_date, NULL) < 0) {
+            perror("gettimeofday");
+            close(message.client_fd);
+            return EXIT_FAILURE;
+        }
+
         get_xml(buffer, bytes_recvd, valid_ctxt, &message);
+
+        /* We've gotten the message, now add it to the processing queue */
+        int retry = 0;
+        while (enqueue(queue, message)) {
+            usleep(500);
+            retry++;
+            if (retry > 10) {
+                fprintf(stderr, "ERROR: Could not enqueue message after 10 retries\n");
+                break;
+            }
+        }
 
         usleep(5);
     }

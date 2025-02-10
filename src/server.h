@@ -50,9 +50,10 @@ int get_xml(const char* buffer, size_t buffer_size, xmlSchemaValidCtxtPtr valid_
  * Get the XML data from the client and validate it
  * @param server_fd The fd of the server socket
  * @param valid_ctxt The validation context
+ * @param queue The message queue to which messages will be enqueued
  * @return EXIT_FAILURE if an error occurred
  */
-int accept_connection(int server_fd, xmlSchemaValidCtxtPtr valid_ctxt);
+int accept_connection(int server_fd, xmlSchemaValidCtxtPtr valid_ctxt, MessageQueue* queue);
 
 
 /**

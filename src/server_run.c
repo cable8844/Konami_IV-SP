@@ -132,11 +132,28 @@ static void set_signal_handler()
 }
 #endif
 
+
+typedef struct {
+    int server_fd;
+    xmlSchemaValidCtxtPtr valid_ctxt;
+    MessageQueue* queue;
+} AcceptConnectionParams;
+
+/**
+ * @brief Accept a connection from a client
+ * @param server_fd The server file descriptor
+ */
+static void pthread_accept_connection_wrapper(void* params) {
+    AcceptConnectionParams* accept_params = (AcceptConnectionParams*)params;
+    accept_connection(accept_params->server_fd, accept_params->valid_ctxt, accept_params->queue);
+}
+
 int main(int argc, char** argv) {
     /* Note: For some reason, VSCode does not like signals and conio.h, so I'm removing it for now. */
     #if 0
     set_signal_handler();
     #endif
+    int ret = 0;
     /* Parse our arguments */
     struct arguments arguments;
     /* Set defaults */
@@ -156,7 +173,34 @@ int main(int argc, char** argv) {
         exit(EXIT_FAILURE);
     }
 
-    accept_connection(server_fd, valid_ctxt);
+
+    MessageQueue* queue = (MessageQueue*)calloc(1, sizeof(MessageQueue));
+    if (queue == NULL) {
+        perror("calloc");
+        ret = EXIT_FAILURE;
+        goto exit;
+    }
+    queue->messages = (Message*)calloc(1, MAX_QUEUE_SIZE * sizeof(Message));
+    if (queue->messages == NULL) {
+        perror("calloc");
+        ret = EXIT_FAILURE;
+        goto exit;
+    }
+
+    AcceptConnectionParams accept_params = {server_fd, valid_ctxt, queue};
+    pthread_t accept_thread;
+    if (pthread_create(&accept_thread, NULL, (void* (*)(void*))pthread_accept_connection_wrapper, (void*)&accept_params) != 0) {
+        perror("pthread_create");
+        ret = EXIT_FAILURE;
+        goto exit;
+    }
+    
+    pthread_t process_thread;
+    if (pthread_create(&process_thread, NULL, (void* (*)(void*))process_queue, (void*)queue) != 0) {
+        perror("pthread_create");
+        ret = EXIT_FAILURE;
+        goto exit;
+    }
 
     while (1) {
         /* Note: For some reason, VSCode does not like signals and conio.h, so I'm removing it for now. */
@@ -168,5 +212,18 @@ int main(int argc, char** argv) {
         usleep(100);
     }
 
-    return 0;
+exit:
+    /* Cleanup */
+    if (schema) {
+        xmlSchemaFree(schema);
+    }
+    if (queue) {
+        if (queue->messages) {
+            free(queue->messages);
+        }
+        free(queue);
+    }
+
+    close(server_fd);
+    return ret;
 }
